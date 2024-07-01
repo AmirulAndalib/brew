@@ -9,6 +9,7 @@
 # HOMEBREW_BREW_FILE is set by extend/ENV/super.rb
 # shellcheck disable=SC2154
 homebrew-setup-ruby() {
+  source "${HOMEBREW_LIBRARY}/Homebrew/utils/helpers.sh"
   source "${HOMEBREW_LIBRARY}/Homebrew/utils/ruby.sh"
   setup-ruby-path
 
@@ -24,14 +25,15 @@ homebrew-setup-ruby() {
     source "${HOMEBREW_LIBRARY}/Homebrew/command_path.sh"
 
     command_path="$(homebrew-command-path "${command}")"
-    if [[ -n "${command_path}" && "${command_path}" != *"/dev-cmd/"* ]]
+    if [[ -n "${command_path}" ]]
     then
-      return
-    fi
-
-    if ! grep -q "Homebrew.install_bundler_gems\!" "${command_path}"
-    then
-      return
+      if [[ "${command_path}" != *"/dev-cmd/"* ]]
+      then
+        return
+      elif ! grep -q "Homebrew.install_bundler_gems\!" "${command_path}"
+      then
+        return
+      fi
     fi
   fi
 

@@ -113,7 +113,7 @@ module Homebrew
 
         odie <<~EOS unless formula.tap.allow_bump?(formula.name)
           Whoops, the #{formula.name} formula has its version update
-          pull requests automatically opened by BrewTestBot!
+          pull requests automatically opened by BrewTestBot every ~3 hours!
           We'd still love your contributions, though, so try another one
           that's not in the autobump list:
             #{Formatter.url("#{formula.tap.remote}/blob/master/.github/autobump.txt")}
@@ -130,7 +130,7 @@ module Homebrew
 
         tap_remote_repo = formula.tap.full_name || formula.tap.remote_repo
         remote = "origin"
-        remote_branch = formula.tap.git_repo.origin_branch_name
+        remote_branch = formula.tap.git_repository.origin_branch_name
         previous_branch = "-"
 
         check_open_pull_requests(formula, tap_remote_repo)

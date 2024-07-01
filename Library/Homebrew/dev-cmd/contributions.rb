@@ -2,7 +2,10 @@
 # frozen_string_literal: true
 
 require "abstract_command"
-require "csv"
+require "warnings"
+Warnings.ignore :default_gems do
+  require "csv"
+end
 
 module Homebrew
   module DevCmd
@@ -57,7 +60,7 @@ module Homebrew
 
         from = args.from.presence || Date.today.prev_year.iso8601
 
-        contribution_types = [:author, :committer, :coauthorship, :review]
+        contribution_types = [:author, :committer, :coauthor, :review]
 
         users = args.user.presence || GitHub.members_by_team("Homebrew", "maintainers").keys
         users.each do |username|
@@ -116,7 +119,7 @@ module Homebrew
       sig { params(totals: Hash).returns(String) }
       def generate_csv(totals)
         CSV.generate do |csv|
-          csv << %w[user repo author committer coauthorship review total]
+          csv << %w[user repo author committer coauthor review total]
 
           totals.sort_by { |_, v| -v.values.sum }.each do |user, total|
             csv << grand_total_row(user, total)
@@ -131,7 +134,7 @@ module Homebrew
           "all",
           grand_total[:author],
           grand_total[:committer],
-          grand_total[:coauthorship],
+          grand_total[:coauthor],
           grand_total[:review],
           grand_total.values.sum,
         ]
@@ -160,13 +163,13 @@ module Homebrew
 
           puts "Determining contributions for #{person} on #{repo_full_name}..." if args.verbose?
 
-          author_commits, committer_commits = GitHub.count_repo_commits(repo_full_name, person, args,
-                                                                        max: MAX_REPO_COMMITS)
+          author_commits, committer_commits = GitHub.count_repo_commits(repo_full_name, person,
+                                                                        from:, to: args.to, max: MAX_REPO_COMMITS)
           data[repo] = {
-            author:       author_commits,
-            committer:    committer_commits,
-            coauthorship: git_log_trailers_cmd(T.must(repo_path), person, "Co-authored-by", from:, to: args.to),
-            review:       count_reviews(repo_full_name, person),
+            author:    author_commits,
+            committer: committer_commits,
+            coauthor:  git_log_trailers_cmd(T.must(repo_path), person, "Co-authored-by", from:, to: args.to),
+            review:    count_reviews(repo_full_name, person, from:, to: args.to),
           }
         end
 
@@ -175,7 +178,7 @@ module Homebrew
 
       sig { params(results: Hash).returns(Hash) }
       def total(results)
-        totals = { author: 0, committer: 0, coauthorship: 0, review: 0 }
+        totals = { author: 0, committer: 0, coauthor: 0, review: 0 }
 
         results.each_value do |counts|
           counts.each do |kind, count|
@@ -199,9 +202,12 @@ module Homebrew
         Utils.safe_popen_read(*cmd).lines.count { |l| l.include?(person) }
       end
 
-      sig { params(repo_full_name: String, person: String).returns(Integer) }
-      def count_reviews(repo_full_name, person)
-        GitHub.count_issues("", is: "pr", repo: repo_full_name, reviewed_by: person, review: "approved", args:)
+      sig {
+        params(repo_full_name: String, person: String, from: T.nilable(String),
+               to: T.nilable(String)).returns(Integer)
+      }
+      def count_reviews(repo_full_name, person, from:, to:)
+        GitHub.count_issues("", is: "pr", repo: repo_full_name, reviewed_by: person, review: "approved", from:, to:)
       rescue GitHub::API::ValidationFailedError
         if args.verbose?
           onoe "Couldn't search GitHub for PRs by #{person}. Their profile might be private. Defaulting to 0."

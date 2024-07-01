@@ -151,17 +151,18 @@ module GitHub
   def self.search_query_string(*main_params, **qualifiers)
     params = main_params
 
-    if (args = qualifiers.fetch(:args, nil))
-      params << if args.from && args.to
-        "created:#{args.from}..#{args.to}"
-      elsif args.from
-        "created:>=#{args.from}"
-      elsif args.to
-        "created:<=#{args.to}"
-      end
+    from = qualifiers.fetch(:from, nil)
+    to = qualifiers.fetch(:to, nil)
+
+    params << if from && to
+      "created:#{from}..#{to}"
+    elsif from
+      "created:>=#{from}"
+    elsif to
+      "created:<=#{to}"
     end
 
-    params += qualifiers.except(:args).flat_map do |key, value|
+    params += qualifiers.except(:args, :from, :to).flat_map do |key, value|
       Array(value).map { |v| "#{key.to_s.tr("_", "-")}:#{v}" }
     end
 
@@ -543,8 +544,8 @@ module GitHub
       end
     elsif state == "open" && ENV["GITHUB_REPOSITORY_OWNER"] == "Homebrew"
       # Try use PR API, which might be cheaper on rate limits in some cases.
-      # The rate limit of the search API under GraphQL is unclear as it's
-      # costs the same as any other query accoding to /rate_limit.
+      # The rate limit of the search API under GraphQL is unclear as it
+      # costs the same as any other query according to /rate_limit.
       # The PR API is also not very scalable so limit to Homebrew CI.
       return fetch_open_pull_requests(name, tap_remote_repo, version:)
     end
@@ -694,7 +695,7 @@ module GitHub
     old_contents = info[:old_contents]
     additional_files = info[:additional_files] || []
     remote = info[:remote] || "origin"
-    remote_branch = info[:remote_branch] || tap.git_repo.origin_branch_name
+    remote_branch = info[:remote_branch] || tap.git_repository.origin_branch_name
     branch = info[:branch_name]
     commit_message = info[:commit_message]
     previous_branch = info[:previous_branch] || "-"
@@ -841,12 +842,12 @@ module GitHub
     output[/^Status: (200)/, 1] != "200"
   end
 
-  def self.repo_commits_for_user(nwo, user, filter, args, max)
+  def self.repo_commits_for_user(nwo, user, filter, from, to, max)
     return if Homebrew::EnvConfig.no_github_api?
 
     params = ["#{filter}=#{user}"]
-    params << "since=#{DateTime.parse(args.from).iso8601}" if args.from
-    params << "until=#{DateTime.parse(args.to).iso8601}" if args.to
+    params << "since=#{DateTime.parse(from).iso8601}" if from.present?
+    params << "until=#{DateTime.parse(to).iso8601}" if to.present?
 
     commits = []
     API.paginate_rest("#{API_URL}/repos/#{nwo}/commits", additional_query_params: params.join("&")) do |result|
@@ -859,11 +860,11 @@ module GitHub
     commits
   end
 
-  def self.count_repo_commits(nwo, user, args, max: nil)
+  def self.count_repo_commits(nwo, user, from: nil, to: nil, max: nil)
     odie "Cannot count commits, HOMEBREW_NO_GITHUB_API set!" if Homebrew::EnvConfig.no_github_api?
 
-    author_shas = repo_commits_for_user(nwo, user, "author", args, max)
-    committer_shas = repo_commits_for_user(nwo, user, "committer", args, max)
+    author_shas = repo_commits_for_user(nwo, user, "author", from, to, max)
+    committer_shas = repo_commits_for_user(nwo, user, "committer", from, to, max)
     return [0, 0] if author_shas.blank? && committer_shas.blank?
 
     author_count = author_shas.count

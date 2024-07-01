@@ -60,7 +60,7 @@ module Utils
         rc_profile = "#{Dir.home}/.rcrc"
         return rc_profile if File.exist? rc_profile
       when :zsh
-        return "#{ENV["ZDOTDIR"]}/.zshrc" if ENV["ZDOTDIR"].present?
+        return "#{ENV["HOMEBREW_ZDOTDIR"]}/.zshrc" if ENV["HOMEBREW_ZDOTDIR"].present?
       end
 
       SHELL_PROFILE_MAP.fetch(preferred, "~/.profile")
@@ -106,7 +106,7 @@ module Utils
       zsh:  "~/.zshrc",
     }.freeze
 
-    UNSAFE_SHELL_CHAR = %r{([^A-Za-z0-9_\-.,:/@~\n])}
+    UNSAFE_SHELL_CHAR = %r{([^A-Za-z0-9_\-.,:/@~+\n])}
 
     sig { params(str: String).returns(String) }
     def csh_quote(str)

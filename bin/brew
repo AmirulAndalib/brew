@@ -57,6 +57,12 @@ do
 done
 unset cmd
 
+# Take the HOMEBREW_PATH if we are running brew within brew, otherwise we would lose the original path.
+if [[ -n "${HOMEBREW_BREW_FILE:-}" && -n "${HOMEBREW_PATH:-}" ]]
+then
+  PATH="${HOMEBREW_PATH}"
+fi
+
 BREW_FILE_DIRECTORY="$(quiet_cd "${0%/*}/" && pwd -P)"
 HOMEBREW_BREW_FILE="${BREW_FILE_DIRECTORY%/}/${0##*/}"
 HOMEBREW_PREFIX="${HOMEBREW_BREW_FILE%/*/*}"
@@ -76,7 +82,7 @@ then
   HOMEBREW_REPOSITORY="${BREW_FILE_DIRECTORY%/*}"
 fi
 
-# Try to find a /usr/local HOMEBREW_PREFIX where possible (for bottles)
+# Try to find a /usr/local HOMEBREW_PREFIX where possible (for macOS x86_64 bottles)
 if [[ -L "/usr/local/bin/brew" && ! -L "${HOMEBREW_PREFIX}/Cellar" ]]
 then
   USR_LOCAL_BREW_FILE_DIRECTORY="$(symlink_target_directory "/usr/local/bin/brew" "/usr/local/bin")"
@@ -144,6 +150,7 @@ MANPAGE_VARS=(
   BAT_CONFIG_PATH
   BAT_THEME
   BROWSER
+  BUNDLE_USER_CACHE
   DISPLAY
   EDITOR
   NO_COLOR
@@ -173,6 +180,7 @@ USED_BY_HOMEBREW_VARS=(
   TMUX
   XDG_CACHE_HOME
   XDG_RUNTIME_DIR
+  ZDOTDIR
 )
 for VAR in "${USED_BY_HOMEBREW_VARS[@]}"
 do

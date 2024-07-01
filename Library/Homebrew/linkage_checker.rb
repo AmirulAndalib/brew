@@ -67,6 +67,7 @@ class LinkageChecker
     display_items("Conflicting libraries", @version_conflict_deps, puts_output:)
     return unless strict
 
+    display_items("Indirect dependencies with linkage", @indirect_deps, puts_output:)
     display_items("Undeclared dependencies with linkage", @undeclared_deps, puts_output:)
     display_items("Files with missing rpath", @files_missing_rpaths, puts_output:)
     display_items "@executable_path references in libraries", @executable_path_dylibs, puts_output:
@@ -79,7 +80,7 @@ class LinkageChecker
     issues = [@broken_deps, @broken_dylibs]
     if test
       issues += [@unwanted_system_dylibs, @version_conflict_deps]
-      issues += [@undeclared_deps, @files_missing_rpaths, @executable_path_dylibs] if strict
+      issues += [@indirect_deps, @undeclared_deps, @files_missing_rpaths, @executable_path_dylibs] if strict
     end
     issues.any?(&:present?)
   end
@@ -111,7 +112,7 @@ class LinkageChecker
         # weakly loaded dylibs may not actually exist on disk, so skip them
         # when checking for broken linkage
         keg_files_dylibs[file] =
-          file.dynamically_linked_libraries(except: :LC_LOAD_WEAK_DYLIB)
+          file.dynamically_linked_libraries(except: :DYLIB_USE_WEAK_LINK)
       end
     end
 

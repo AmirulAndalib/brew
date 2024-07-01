@@ -34,7 +34,7 @@ module Stdenv
     self["PKG_CONFIG_LIBDIR"] = determine_pkg_config_libdir
 
     self["MAKEFLAGS"] = "-j#{make_jobs}"
-    self["RUSTFLAGS"] = Hardware.rustflags_target_cpu
+    self["RUSTFLAGS"] = Hardware.rustflags_target_cpu(effective_arch)
 
     if HOMEBREW_PREFIX.to_s != "/usr/local"
       # /usr/local is already an -isystem and -L directory so we skip it
@@ -128,7 +128,7 @@ module Stdenv
 
   sig { void }
   def clang
-    super()
+    super
     replace_in_cflags(/-Xarch_#{Hardware::CPU.arch_32_bit} (-march=\S*)/, '\1')
     map = Hardware::CPU.optimization_flags.dup
     if DevelopmentTools.clang_build_version < 700

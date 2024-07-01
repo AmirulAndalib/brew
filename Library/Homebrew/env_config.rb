@@ -1,8 +1,6 @@
 # typed: true
 # frozen_string_literal: true
 
-require "set"
-
 module Homebrew
   # Helper module for querying Homebrew-specific environment variables.
   #
@@ -44,6 +42,12 @@ module Homebrew
                      "to instead be downloaded from " \
                      "`http://localhost:8080/v2/homebrew/core/gettext/manifests/0.21`",
       },
+      HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK:      {
+        description: "If `HOMEBREW_ARTIFACT_DOMAIN` and `HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK` are both set, " \
+                     "if the request to `HOMEBREW_ARTIFACT_DOMAIN` fails then it Homebrew will error rather than " \
+                     "trying any other/default URLs.",
+        boolean:     true,
+      },
       HOMEBREW_AUTO_UPDATE_SECS:                 {
         description:  "Run `brew update` once every `HOMEBREW_AUTO_UPDATE_SECS` seconds before some commands, " \
                       "e.g. `brew install`, `brew upgrade` and `brew tap`. Alternatively, " \
@@ -65,7 +69,7 @@ module Homebrew
       },
       HOMEBREW_BOOTSNAP:                         {
         description: "If set, use Bootsnap to speed up repeated `brew` calls. " \
-                     "A no-op when using Homebrew's vendored, relocatable Ruby on macOS (as it doesn't work).",
+                     "A no-op on Linux when not using Homebrew's vendored, relocatable Ruby.",
         boolean:     true,
       },
       HOMEBREW_BOTTLE_DOMAIN:                    {
@@ -86,6 +90,9 @@ module Homebrew
       HOMEBREW_BROWSER:                          {
         description:  "Use this as the browser when opening project homepages.",
         default_text: "`$BROWSER` or the OS's default browser.",
+      },
+      HOMEBREW_BUNDLE_USER_CACHE:                {
+        description: "If set, use this directory as the `bundle`(1) user cache.",
       },
       HOMEBREW_CACHE:                            {
         description:  "Use this directory as the download cache.",

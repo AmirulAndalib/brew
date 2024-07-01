@@ -1,4 +1,4 @@
-# typed: true
+# typed: strict
 # frozen_string_literal: true
 
 require "abstract_command"
@@ -45,6 +45,9 @@ module Homebrew
 
           ohai "bundle pristine"
           safe_system "bundle", "pristine"
+
+          ohai "bundle clean"
+          safe_system "bundle", "clean"
 
           # Workaround Bundler 2.4.21 issue where platforms may be removed.
           # Although we don't use 2.4.21, Dependabot does as it currently ignores your lockfile version.

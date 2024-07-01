@@ -142,7 +142,7 @@ old. This can be adjusted with `HOMEBREW_CLEANUP_MAX_AGE_DAYS`.
 
 : Show what would be removed, but do not actually remove anything.
 
-`-s`
+`-s`, `--scrub`
 
 : Scrub the cache, including downloads for even the latest versions. Note that
   downloads for any installed formulae or casks will still not be deleted. If
@@ -1162,6 +1162,23 @@ evaluation of this command's output to your dotfiles (e.g. `~/.bash_profile` or
 The shell can be specified explicitly with a supported shell name parameter.
 Unknown shells will output POSIX exports.
 
+### `tab` \[`--installed-on-request`\] \[`--no-installed-on-request`\] *`formula`* \[...\]
+
+Edit tab information for installed formulae.
+
+This can be useful when you want to control whether an installed formula should
+be removed by `brew autoremove`. To prevent removal, mark the formula as
+installed on request; to allow removal, mark the formula as not installed on
+request.
+
+`--installed-on-request`
+
+: Mark *`formula`* as installed on request.
+
+`--no-installed-on-request`
+
+: Mark *`formula`* as not installed on request.
+
 ### `tap` \[*`options`*\] \[*`user`*`/`*`repo`*\] \[*`URL`*\]
 
 Tap a formula repository. If no arguments are provided, list all installed taps.
@@ -1998,10 +2015,9 @@ Summarise contributions to Homebrew repositories.
 
 : Specify a comma-separated list of repositories to search. Supported
   repositories: `brew`, `core`, `cask`, `aliases`, `bundle`,
-  `command-not-found`, `test-bot`, `services` and `cask-fonts`. Omitting this
-  flag, or specifying `--repositories=primary`, searches only the main
-  repositories: brew,core,cask. Specifying `--repositories=all`, searches all
-  repositories.
+  `command-not-found`, `test-bot` and `services`. Omitting this flag, or
+  specifying `--repositories=primary`, searches only the main repositories:
+  brew,core,cask. Specifying `--repositories=all`, searches all repositories.
 
 `--from`
 
@@ -2171,6 +2187,11 @@ formula file at *`tap`*`/Formula/`*`formula`*`@`*`version`*`.rb`. If the tap is
 not installed yet, attempt to install/clone the tap before continuing. To
 extract a formula from a tap that is not `homebrew/core` use its fully-qualified
 form of *`user`*`/`*`repo`*`/`*`formula`*.
+
+`--git-revision`
+
+: Search for the specified *`version`* of *`formula`* starting at *`revision`*
+  instead of HEAD.
 
 `--version`
 
@@ -2508,13 +2529,17 @@ Apply the bottle commit and publish bottles to a host.
 : Use the specified download strategy class for downloading the bottle's URL
   instead of Homebrew's default.
 
-### `prof` \[`--stackprof`\] *`command`* \[...\]
+### `prof` \[`--stackprof`\] \[`--vernier`\] *`command`* \[...\]
 
 Run Homebrew with a Ruby profiler. For example, `brew prof readall`.
 
 `--stackprof`
 
 : Use `stackprof` instead of `ruby-prof` (the default).
+
+`--vernier`
+
+: Use `vernier` instead of `ruby-prof` (the default).
 
 ### `release` \[`--major`\] \[`--minor`\]
 
@@ -3510,6 +3535,12 @@ command execution e.g. `$(cat file)`.
   downloaded from
   `http://localhost:8080/v2/homebrew/core/gettext/manifests/0.21`
 
+`HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK`
+
+: If `HOMEBREW_ARTIFACT_DOMAIN` and `HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK` are
+  both set, if the request to `HOMEBREW_ARTIFACT_DOMAIN` fails then it Homebrew
+  will error rather than trying any other/default URLs.
+
 `HOMEBREW_AUTO_UPDATE_SECS`
 
 : Run `brew update` once every `HOMEBREW_AUTO_UPDATE_SECS` seconds before some
@@ -3537,8 +3568,8 @@ command execution e.g. `$(cat file)`.
 
 `HOMEBREW_BOOTSNAP`
 
-: If set, use Bootsnap to speed up repeated `brew` calls. A no-op when using
-  Homebrew's vendored, relocatable Ruby on macOS (as it doesn't work).
+: If set, use Bootsnap to speed up repeated `brew` calls. A no-op on Linux when
+  not using Homebrew's vendored, relocatable Ruby.
 
 `HOMEBREW_BOTTLE_DOMAIN`
 
@@ -3562,6 +3593,10 @@ command execution e.g. `$(cat file)`.
 : Use this as the browser when opening project homepages.
   
   *Default:* `$BROWSER` or the OS's default browser.
+
+`HOMEBREW_BUNDLE_USER_CACHE`
+
+: If set, use this directory as the `bundle`(1) user cache.
 
 `HOMEBREW_CACHE`
 
@@ -4054,11 +4089,11 @@ Homebrew's Technical Steering Committee is Bo Anderson, FX Coudert, Michka
 Popoff, Mike McQuaid and Rylan Polster.
 
 Homebrew's maintainers are Alexander Bayandin, Bevan Kay, Bo Anderson, Branch
-Vincent, Caleb Xu, Carlo Cabrera, David Baumgold, Douglas Eichelberger, Dustin
-Rodrigues, Eric Knibbe, FX Coudert, Issy Long, Justin Krehel, Markus Reiter,
-Miccal Matthews, Michael Cho, Michka Popoff, Mike McQuaid, Nanda H Krishna,
-Patrick Linnane, Razvan Azamfirei, Rui Chen, Ruoyu Zhong, Rylan Polster, Sam
-Ford, Sean Molenaar, Thierry Moisan, Timothy Sutton and William Woodruff.
+Vincent, Caleb Xu, Carlo Cabrera, Douglas Eichelberger, Dustin Rodrigues, Eric
+Knibbe, FX Coudert, Issy Long, Justin Krehel, Markus Reiter, Miccal Matthews,
+Michael Cho, Michka Popoff, Mike McQuaid, Nanda H Krishna, Patrick Linnane,
+Razvan Azamfirei, Rui Chen, Ruoyu Zhong, Rylan Polster, Sam Ford, Sean Molenaar,
+Thierry Moisan, Timothy Sutton and William Woodruff.
 
 Former maintainers with significant contributions include Misty De Méo, Shaun
 Jackman, Vítor Galvão, Claudia Pellegrino, Seeker, Jan Viljanen, JCount,

@@ -6,7 +6,6 @@ require "utils/bottles"
 require "attrable"
 require "formula"
 require "cask/cask_loader"
-require "set"
 
 module Homebrew
   # Helper class for cleaning up the Homebrew cache.
@@ -108,7 +107,7 @@ module Homebrew
 
         version = if HOMEBREW_BOTTLES_EXTNAME_REGEX.match?(to_s)
           begin
-            Utils::Bottles.resolve_version(pathname)
+            Utils::Bottles.resolve_version(pathname).to_s
           rescue
             nil
           end

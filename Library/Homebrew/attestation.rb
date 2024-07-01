@@ -5,13 +5,14 @@ require "date"
 require "json"
 require "utils/popen"
 require "exceptions"
+require "system_command"
 
 module Homebrew
   module Attestation
+    extend SystemCommand::Mixin
+
     # @api private
     HOMEBREW_CORE_REPO = "Homebrew/homebrew-core"
-    # @api private
-    HOMEBREW_CORE_CI_URI = "https://github.com/Homebrew/homebrew-core/.github/workflows/publish-commit-bottles.yml@refs/heads/master"
 
     # @api private
     BACKFILL_REPO = "trailofbits/homebrew-brew-verify"
@@ -54,8 +55,8 @@ module Homebrew
 
     # Verifies the given bottle against a cryptographic attestation of build provenance.
     #
-    # The provenance is verified as originating from `signing_repo`, which is a `String`
-    # that should be formatted as a GitHub `owner/repo`.
+    # The provenance is verified as originating from `signing_repository`, which is a `String`
+    # that should be formatted as a GitHub `owner/repository`.
     #
     # Callers may additionally pass in `signing_workflow`, which will scope the attestation
     # down to an exact GitHub Actions workflow, in
@@ -71,7 +72,7 @@ module Homebrew
              signing_workflow: T.nilable(String), subject: T.nilable(String)).returns(T::Hash[T.untyped, T.untyped])
     }
     def self.check_attestation(bottle, signing_repo, signing_workflow = nil, subject = nil)
-      cmd = [gh_executable, "attestation", "verify", bottle.cached_download, "--repo", signing_repo, "--format",
+      cmd = ["attestation", "verify", bottle.cached_download, "--repo", signing_repo, "--format",
              "json"]
 
       cmd += ["--cert-identity", signing_workflow] if signing_workflow.present?
@@ -83,7 +84,8 @@ module Homebrew
       raise GhAuthNeeded, "missing credentials" if credentials.blank?
 
       begin
-        output = Utils.safe_popen_read({ "GH_TOKEN" => credentials }, *cmd)
+        result = system_command!(gh_executable, args: cmd, env: { "GH_TOKEN" => credentials },
+                                secrets: [credentials])
       rescue ErrorDuringExecution => e
         # Even if we have credentials, they may be invalid or malformed.
         raise GhAuthNeeded, "invalid credentials" if e.status.exitstatus == 4
@@ -92,7 +94,7 @@ module Homebrew
       end
 
       begin
-        attestations = JSON.parse(output)
+        attestations = JSON.parse(result.stdout)
       rescue JSON::ParserError
         raise InvalidAttestationError, "attestation verification returned malformed JSON"
       end
@@ -101,8 +103,22 @@ module Homebrew
       # for all attestations that match the input's digest. We want to additionally
       # filter these down to just the attestation whose subject matches the bottle's name.
       subject = bottle.filename.to_s if subject.blank?
-      attestation = attestations.find do |a|
-        a.dig("verificationResult", "statement", "subject", 0, "name") == subject
+
+      attestation = if bottle.tag.to_sym == :all
+        # :all-tagged bottles are created by `brew bottle --merge`, and are not directly
+        # bound to their own filename (since they're created by deduplicating other filenames).
+        # To verify these, we parse each attestation subject and look for one with a matching
+        # formula (name, version), but not an exact tag match.
+        # This is sound insofar as the signature has already been verified. However,
+        # longer term, we should also directly attest to `:all`-tagged bottles.
+        attestations.find do |a|
+          actual_subject = a.dig("verificationResult", "statement", "subject", 0, "name")
+          actual_subject.start_with? "#{bottle.filename.name}--#{bottle.filename.version}"
+        end
+      else
+        attestations.find do |a|
+          a.dig("verificationResult", "statement", "subject", 0, "name") == subject
+        end
       end
 
       raise InvalidAttestationError, "no attestation matches subject" if attestation.blank?
@@ -123,7 +139,18 @@ module Homebrew
     sig { params(bottle: Bottle).returns(T::Hash[T.untyped, T.untyped]) }
     def self.check_core_attestation(bottle)
       begin
-        attestation = check_attestation bottle, HOMEBREW_CORE_REPO, HOMEBREW_CORE_CI_URI
+        # Ideally, we would also constrain the signing workflow here, but homebrew-core
+        # currently uses multiple signing workflows to produce bottles
+        # (e.g. `dispatch-build-bottle.yml`, `dispatch-rebottle.yml`, etc.).
+        #
+        # We could check each of these (1) explicitly (slow), (2) by generating a pattern
+        # to pass into `--cert-identity-regex` (requires us to build up a Go-style regex),
+        # or (3) by checking the resulting JSON for the expected signing workflow.
+        #
+        # Long term, we should probably either do (3) *or* switch to a single reusable
+        # workflow, which would then be our sole identity. However, GitHub's
+        # attestations currently do not include reusable workflow state by default.
+        attestation = check_attestation bottle, HOMEBREW_CORE_REPO
         return attestation
       rescue InvalidAttestationError
         odebug "falling back on backfilled attestation for #{bottle}"
