@@ -435,7 +435,7 @@ module GitHub
   }
   def self.sponsorships(user)
     query = <<~EOS
-        query($user: String, $after: String) { organization(login: $user) {
+        query($user: String!, $after: String) { organization(login: $user) {
           sponsorshipsAsMaintainer(first: 100, after: $after) {
             pageInfo {
               hasNextPage
@@ -467,7 +467,9 @@ module GitHub
       # This has been reported to GitHub.
       errors += result["errors"] if result["errors"].present?
 
-      current_sponsorships = result["data"]["organization"]["sponsorshipsAsMaintainer"]
+      current_sponsorships = result.dig("data", "organization", "sponsorshipsAsMaintainer")
+      # if `current_sponsorships` is blank, then there should be errors to report.
+      next { "hasNextPage" => false } if current_sponsorships.blank?
 
       # The organisations mentioned above will show up as nil nodes.
       if (nodes = current_sponsorships["nodes"].compact.presence)
@@ -627,7 +629,17 @@ module GitHub
     pull_requests || []
   end
 
-  def self.check_for_duplicate_pull_requests(name, tap_remote_repo, state:, file:, quiet:, version: nil)
+  sig {
+    params(
+      name:            String,
+      tap_remote_repo: String,
+      file:            String,
+      quiet:           T::Boolean,
+      state:           T.nilable(String),
+      version:         T.nilable(String),
+    ).void
+  }
+  def self.check_for_duplicate_pull_requests(name, tap_remote_repo, file:, quiet: false, state: nil, version: nil)
     pull_requests = fetch_pull_requests(name, tap_remote_repo, state:, version:)
 
     pull_requests.select! do |pr|
@@ -637,19 +649,25 @@ module GitHub
     end
     return if pull_requests.blank?
 
+    confidence = version ? "are" : "might be"
     duplicates_message = <<~EOS
-      These #{state} pull requests may be duplicates:
+      These #{state} pull requests #{confidence} duplicates:
       #{pull_requests.map { |pr| "#{pr["title"]} #{pr["html_url"]}" }.join("\n")}
     EOS
     error_message = <<~EOS
-      Duplicate PRs should not be opened.
-      Manually open these PRs if you are sure that they are not duplicates.
+      Duplicate PRs must not be opened.
+      Manually open these PRs if you are sure that they are not duplicates (and tell us that in the PR).
     EOS
 
-    if quiet
-      odie error_message
-    else
+    if version
       odie <<~EOS
+        #{duplicates_message.chomp}
+        #{error_message}
+      EOS
+    elsif quiet
+      opoo error_message
+    else
+      opoo <<~EOS
         #{duplicates_message.chomp}
         #{error_message}
       EOS
@@ -662,7 +680,7 @@ module GitHub
 
   private_class_method def self.add_auth_token_to_url!(url)
     if API.credentials_type == :env_token
-      url.sub!(%r{^https://github\.com/}, "https://#{API.credentials}@github.com/")
+      url.sub!(%r{^https://github\.com/}, "https://x-access-token:#{API.credentials}@github.com/")
     end
     url
   end
